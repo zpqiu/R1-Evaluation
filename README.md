@@ -1,13 +1,22 @@
 # Evaluation Tool for Reasoning Models
 
-## Usage
+## Installation
 
-1. Add new model to `utils/model_utils.py` by changing `MODEL_TO_NAME` and `MODEL_TO_SYS`
+This project use uv to manage dependencies. Please refer to the [uv documentation](https://docs.astral.sh/uv/getting-started/installation/) for installation instructions.
+
+After installing uv, you can install the dependencies by running:
+```bash
+uv sync
+```
+
+## Usage
 
 ### Step 1: Environment Setup
 
 - Load OpenAI Compatible API HTTP Endpoint
 ```bash
+python3 -m sglang.launch_server --model-path pe-nlp/Qwen2.5-3B-REINF-3096 --host 0.0.0.0 --port 30000 --tp 2
+# and set the OPENAI_API_KEY
 export OPENAI_API_KEY=xys
 ```
 - Login Hugging Face
@@ -15,9 +24,15 @@ export OPENAI_API_KEY=xys
 huggingface-cli login
 ```
 
-### Step 2: Run Inference and Check
+### Step 2: Add New Model
+
+Add new model to `utils/model_utils.py` by changing `MODEL_TO_NAME` and `MODEL_TO_SYS`
+
+
+### Step 3: Run Inference and Check
 
 ```bash
-python3 eval.py --model ./R1-3B-3096 --evals=AIME,MATH500,GPQADiamond --base-url http://localhost:30000/v1 --output_file=R1-3B-3096-Reward2.txt  --temperatures 0.0 --n 1 --sample-size -1
+uv run eval.py --model ./R1-3B-3096 --evals=AIME,MATH500,GPQADiamond --base-url http://localhost:30000/v1 --output_file=R1-3B-3096-Reward2.txt  --temperature 0.6 --n 8 --sample-size -1
 ```
 
+`n` is the number of samples for each problem. The result metric is Pass@1.
