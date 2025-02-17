@@ -36,7 +36,7 @@ def perform_inference_and_check(handler: TaskHandler, temperature, max_tokens, r
     results = handler.load_existing_results(result_file)
     print(f"Loaded {len(results)} existing results.")
     train_data = handler.load_and_filter_dataset(args.start, args.end, split=args.split, source=args.source, \
-                                                 filter_difficulty=args.filter_difficulty, args=args)
+                                                 filter_difficulty=False, args=args)
     remaining_data = handler.process_remaining_data(train_data, results)
     conversations = handler.make_conversations(remaining_data, system_prompt, args.model)
         
