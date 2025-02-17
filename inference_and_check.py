@@ -26,8 +26,8 @@ def fetch_response_openai(llm, model_name, max_tokens, temp, n, messages):
             n=1,
             temperature=temp,
             max_tokens=max_tokens,
-            # timeout=10000,
-            request_timeout=10000,
+            timeout=10000,
+            # request_timeout=10000,
         )
         response_list.append(response)
     return response_list
