@@ -36,3 +36,8 @@ uv run eval.py --model ./R1-3B-3096 --evals=AIME,MATH500,GPQADiamond --base-url 
 ```
 
 `n` is the number of samples for each problem. The result metric is Pass@1.
+
+
+## Acknowledgement
+
+This project is inspired by [SkyThought](https://github.com/NovaSky-AI/SkyThought).
