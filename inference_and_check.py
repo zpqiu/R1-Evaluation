@@ -148,10 +148,7 @@ def main():
     # create result dir if not exists
     if args.result_dir and not os.path.exists(args.result_dir):
         os.makedirs(args.result_dir)
-    if args.math_difficulty_lower_bound is not None or  args.math_difficulty_upper_bound is not None:
-        result_file = os.path.join(args.result_dir, f"{MODEL_TO_NAME[args.model]}_{args.dataset}_{args.split}_{args.source}_{args.start}_{args.end}_{args.math_difficulty_lower_bound}_{args.math_difficulty_upper_bound}.json")
-    else:
-        result_file = os.path.join(args.result_dir, f"{MODEL_TO_NAME[args.model]}_{args.dataset}_{args.split}_{args.source}_{args.start}_{args.end}.json")
+    result_file = os.path.join(args.result_dir, f"{MODEL_TO_NAME[args.model]}_{args.dataset}_{args.split}_{args.source}.json")
 
     llm = OpenAI(base_url=args.base_url)
     system_prompt = SYSTEM_PROMPT[args.model]
