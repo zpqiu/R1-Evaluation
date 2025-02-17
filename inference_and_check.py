@@ -27,7 +27,6 @@ def fetch_response_openai(llm, model_name, max_tokens, temp, n, messages):
             temperature=temp,
             max_tokens=max_tokens,
             timeout=10000,
-            # request_timeout=10000,
         )
         response_list.append(response)
     return response_list
@@ -49,17 +48,12 @@ def perform_inference_and_check(handler: TaskHandler, temperature, max_tokens, r
     total_correct = 0 
     total_finish = 0
     with ProcessPoolExecutor(max_workers=32) as executor:
-        # future_to_task = {
-        #     executor.submit(handler.update_results, remaining_data[idx], response): idx
-        #     for idx, response in enumerate(responses)
-        # }
         future_to_task = {}
         token_usages = {}
         for idx, response_list in enumerate(responses):
             for response in response_list:
                 response_str = response.choices[0].message.content.strip()
                 future_to_task[executor.submit(handler.update_results, remaining_data[idx], response_str, None)] = idx
-                # print(f"Request output: {response}")
                 
                 if idx not in token_usages:
                     token_usages[idx] = []
@@ -85,10 +79,7 @@ def perform_inference_and_check(handler: TaskHandler, temperature, max_tokens, r
                 results[problem_key]["prompt"] = prompt
 
             results[problem_key]["responses"].append(response_entry)
-            results[problem_key]["token_usages"].append({
-                "completion_tokens": token_usages[idx].completion_tokens,
-                "prompt_tokens": token_usages[idx].prompt_tokens,
-            })
+            results[problem_key]["token_usages"].extend(token_usages[idx])
                 
         print(f"Final acc: {total_correct}/{total_finish}")
         acc = round(total_correct / total_finish, 4) if total_finish > 0 else 0
@@ -133,19 +124,13 @@ def main():
     parser = argparse.ArgumentParser(description="Unified inference and checking for different datasets/tasks.")
     parser.add_argument("--dataset", type=str, required=True, choices=["NUMINA", "APPS", "TACO", "MATH500", "AIME", "GPQADiamond", "MMLU", "MMLUPro", "LiveCodeBench", "GSM8K", "ARC-C"], help="Dataset to process.")
     parser.add_argument("--model", type=str, required=True, default="Qwen/QwQ-32B-Preview", help="The model to run.")
-    parser.add_argument("--tp", type=int, default=8, help="Tensor Parallelism Degree")
     parser.add_argument("--max_tokens", type=int, default=32768, help="Max tokens for the model.")
     parser.add_argument("--split", type=str, default="train", help="Split to use for apps (e.g., train, test).")
     parser.add_argument("--source", type=str, help="Source for the dataset.")
     parser.add_argument("--start", type=int, default=0, help="Start index.")
     parser.add_argument("--end", type=int, default=-1, help="End index.")
-    parser.add_argument("--filter-difficulty", action="store_true", help="Filter difficulty.")
     parser.add_argument("--result-dir", type=str, default="./", help="Result dir to save files.")
-    parser.add_argument("--check", action="store_true", help="Perform evaluation checks on generated samples.")
-    parser.add_argument("--inference", action="store_true", help="Perform inference.")
     parser.add_argument("--temperature", type=float, default=0, help="Temperature for sampling.")
-    parser.add_argument("--math-difficulty-lower-bound", type=int, default=None, help="Lowest difficulty level for math.")
-    parser.add_argument("--math-difficulty-upper-bound", type=int, default=None, help="Highest difficulty level for math.")
     parser.add_argument("--n", type=int, default=1, help="Number of samples generated per problem.")
     parser.add_argument("--sample-method", type=str, default="random", choices=["random", "uniform_by_difficulty"], help="Method to sample problems.")
     parser.add_argument("--sample-size", type=int, default=100, help="Number of problems to sample.")
