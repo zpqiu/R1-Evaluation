@@ -9,6 +9,7 @@ dependencies = [
     "latex2sympy2>=1.9.1",
     "openai>=1.63.0",
     "pyext>=0.7",
+    "regex>=2024.11.6",
     "scipy>=1.15.2",
     "word2number>=1.1",
 ]

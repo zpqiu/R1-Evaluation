@@ -17,7 +17,7 @@ class NumpyEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-def fetch_response_openai(llm, model_name, max_tokens, temp, messages, n=1):
+def fetch_response_openai(llm, model_name, max_tokens, temp, n, messages):
     response_list = []
     for i in range(n):
         response = llm.chat.completions.create(
