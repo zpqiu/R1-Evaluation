@@ -37,6 +37,8 @@ SYSTEM_PROMPT = {
     "bespokelabs/Bespoke-Stratos-7B": SKY_T1_SYS,
     "R1/Qwen2.5-1.5B-Instruct": SKY_T1_SYS,
     "./R1-3B-3096": R1_SYS,
+    "./global_step25_hf": "",
+    "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B": "",
 }
 
 MODEL_TO_NAME = {
@@ -53,4 +55,6 @@ MODEL_TO_NAME = {
     "R1/Qwen2.5-1.5B-Instruct": "R1-Qwen2.5-1.5B-Instruct",
     "R1/Qwen2.5-7B-RLOO": "R1-Qwen2.5-7B-RLOO",
     "./R1-3B-3096": "R1-3B-3096",
+    "./global_step25_hf": "global_step25_hf",
+    "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B": "DeepSeek-R1-Distill-Qwen-7B"
 }

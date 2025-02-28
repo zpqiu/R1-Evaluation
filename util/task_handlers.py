@@ -419,6 +419,77 @@ class NUMINATaskHandler(TaskHandler):
     def process_remaining_data(self, train_data, results):
         return [row.to_dict() for _, row in train_data.iterrows() if str(row["problem"]) not in results]
 
+
+class ORZTaskHandler(TaskHandler):
+    @staticmethod
+    def get_question_key():
+        return "problem"
+
+    @staticmethod
+    def generate_prompt(prompt):
+        return "Return your final response within \\boxed{{}}. " + prompt
+    
+    @timeout(5)  # Add timeout of 5 seconds
+    def check_correctness(self, problem, generation):
+        solution = extract_answer(problem["ground_truth_answer"])
+        solution = strip_answer_string(solution)
+        pred = extract_answer(generation)
+        pred = strip_answer_string(pred)
+        return math_equal(pred, solution)
+    
+    def update_results(self, problem, response, reasoning_content=None):
+        if not isinstance(response, str):
+            response = response.outputs[0].text.strip()
+        # Initialize the response structure
+        response_entry = {
+            "content": response,
+            "reasoning_content": reasoning_content,
+            "correctness": None,
+            "reason": None,
+        }
+
+        try:
+            curr_res = self.check_correctness(problem, generation=response)
+            if curr_res:
+                response_entry["correctness"] = True
+                response_entry["reason"] = ""
+            else:
+                response_entry["correctness"] = False
+                response_entry["reason"] = "Solution is incorrect."
+        except TimeoutException as e:
+            response_entry["correctness"] = False
+            response_entry["reason"] = str(e)
+
+        return response_entry
+
+
+    def make_conversations(self, data, system_prompt, model=None):
+        conversations = []
+        for problem in data:
+            prompt_text = self.generate_prompt(problem["problem"])
+            conversations.append([
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt_text}
+            ])
+        return conversations
+
+    def load_and_filter_dataset(self, start, end, split="train", source=None, filter_difficulty=False, args=None):
+        # args.sample_size: int, args.sample_method: ["random", "uniform_by_difficulty"]
+        # if set args.sample_size > 0, the start and end will be ignored
+        dataset = load_dataset("pe-nlp/ORZ-Math-57K-NoSys")
+        train_data = dataset["train"].to_pandas()
+        # train_data = train_data[train_data["ground_truth_answer"].str.contains("boxed", na=False)]
+        print("len train data", len(train_data))
+        if args.sample_size > 0:
+            if args.sample_method == "random":
+                train_data = train_data.iloc[-10000:].sample(n=args.sample_size, random_state=42).reset_index(drop=True)
+        else:
+            train_data = train_data.query('source == @source').iloc[start:end] if end > 0 else train_data.query('source == @source').iloc[start:]
+        return train_data
+
+    def process_remaining_data(self, train_data, results):
+        return [row.to_dict() for _, row in train_data.iterrows() if str(row["problem"]) not in results]
+
 class APPSTaskHandler(TaskHandler):
     @staticmethod
     def get_question_key():
@@ -925,4 +996,5 @@ TASK_HANDLERS = {
     "LiveCodeBench": LiveCodeBenchTaskHandler,
     "GSM8K": GSM8KTaskHandler,
     "ARC-C": ARCChallengeTaskHandler,
+    "ORZ": ORZTaskHandler,
 }

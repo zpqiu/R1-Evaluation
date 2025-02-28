@@ -12,6 +12,7 @@ eval_to_split = {
   "LiveCodeBench": "test",
   "GSM8K": "test",
   "ARC-C": "test",
+  "ORZ": "train"
 }
 
 def parse_arguments():

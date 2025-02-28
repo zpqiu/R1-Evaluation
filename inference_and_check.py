@@ -122,7 +122,7 @@ def perform_inference_and_check(handler: TaskHandler, temperature, max_tokens, r
 
 def main():
     parser = argparse.ArgumentParser(description="Unified inference and checking for different datasets/tasks.")
-    parser.add_argument("--dataset", type=str, required=True, choices=["NUMINA", "APPS", "TACO", "MATH500", "AIME", "GPQADiamond", "MMLU", "MMLUPro", "LiveCodeBench", "GSM8K", "ARC-C"], help="Dataset to process.")
+    parser.add_argument("--dataset", type=str, required=True, choices=["ORZ", "NUMINA", "APPS", "TACO", "MATH500", "AIME", "GPQADiamond", "MMLU", "MMLUPro", "LiveCodeBench", "GSM8K", "ARC-C"], help="Dataset to process.")
     parser.add_argument("--model", type=str, required=True, default="Qwen/QwQ-32B-Preview", help="The model to run.")
     parser.add_argument("--max_tokens", type=int, default=32768, help="Max tokens for the model.")
     parser.add_argument("--split", type=str, default="train", help="Split to use for apps (e.g., train, test).")
