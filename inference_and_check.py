@@ -17,19 +17,16 @@ class NumpyEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-def fetch_response_openai(llm, model_name, max_tokens, temp, n, messages):
-    response_list = []
-    for i in range(n):
-        response = llm.chat.completions.create(
-            model=model_name,
-            messages=messages,
-            n=1,
-            temperature=temp,
-            max_tokens=max_tokens,
-            timeout=10000,
-        )
-        response_list.append(response)
-    return response_list
+def fetch_response_openai(llm, model_name, max_tokens, temp, messages):
+    response = llm.chat.completions.create(
+        model=model_name,
+        messages=messages,
+        n=1,
+        temperature=temp,
+        max_tokens=max_tokens,
+        timeout=10000,
+    )
+    return response
 
 
 def perform_inference_and_check(handler: TaskHandler, temperature, max_tokens, result_file, llm, system_prompt, args):
@@ -39,28 +36,33 @@ def perform_inference_and_check(handler: TaskHandler, temperature, max_tokens, r
                                                  filter_difficulty=False, args=args)
     remaining_data = handler.process_remaining_data(train_data, results)
     conversations = handler.make_conversations(remaining_data, system_prompt, args.model)
+    repeated_conversations = []
+    repeated_remaining_data = []
+    for conversation in conversations:
+        for _ in range(args.n):
+            repeated_conversations.append(conversation.copy())
+            repeated_remaining_data.append(remaining_data.copy())
         
-    fetch_partial = partial(fetch_response_openai, llm, args.model, max_tokens, temperature, args.n)
+    fetch_partial = partial(fetch_response_openai, llm, args.model, max_tokens, temperature)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=16) as e:
-        responses = list(e.map(fetch_partial, conversations))
+        responses = list(e.map(fetch_partial, repeated_conversations))
         
     total_correct = 0 
     total_finish = 0
     with ProcessPoolExecutor(max_workers=32) as executor:
         future_to_task = {}
         token_usages = {}
-        for idx, response_list in enumerate(responses):
-            for response in response_list:
-                response_str = response.choices[0].message.content.strip()
-                future_to_task[executor.submit(handler.update_results, remaining_data[idx], response_str, None)] = idx
-                
-                if idx not in token_usages:
-                    token_usages[idx] = []
-                token_usages[idx].append({
-                    "completion_tokens": response.usage.completion_tokens,
-                    "prompt_tokens": response.usage.prompt_tokens
-                })
+        for idx, response in enumerate(responses):
+            response_str = response.choices[0].message.content.strip()
+            future_to_task[executor.submit(handler.update_results, repeated_remaining_data[idx], response_str, None)] = idx
+            
+            if idx not in token_usages:
+                token_usages[idx] = []
+            token_usages[idx].append({
+                "completion_tokens": response.usage.completion_tokens,
+                "prompt_tokens": response.usage.prompt_tokens
+            })
 
         for future in tqdm(as_completed(future_to_task), total=len(future_to_task), desc="Processing Generations"):
             idx = future_to_task[future]
@@ -68,15 +70,15 @@ def perform_inference_and_check(handler: TaskHandler, temperature, max_tokens, r
             total_correct += response_entry["correctness"]
             total_finish += 1
 
-            problem_key = remaining_data[idx][handler.get_question_key()]
+            problem_key = repeated_remaining_data[idx][handler.get_question_key()]
             if problem_key not in results:
-                results[problem_key] = remaining_data[idx]
+                results[problem_key] = repeated_remaining_data[idx]
                 if isinstance(handler, NUMINATaskHandler):
                     results[problem_key]["messages"] = ""
                 results[problem_key]["responses"] = []
                 results[problem_key]["token_usages"] = []
-                prompt = conversations[idx][1]["content"]
-                results[problem_key]["prompt"] = prompt
+                # prompt = repeated_conversations[idx][1]["content"]
+                # results[problem_key]["prompt"] = prompt
 
             results[problem_key]["responses"].append(response_entry)
             results[problem_key]["token_usages"].extend(token_usages[idx])
