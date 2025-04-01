@@ -29,6 +29,29 @@ def fetch_response_openai(llm, model_name, max_tokens, temp, messages):
     return response
 
 
+R1_SYS_V2 = (
+    "A conversation between User and Assistant. The User asks a question, and the Assistant solves it. "
+    "The Assistant first thinks about the reasoning process in the mind and then provides the User with the answer. "
+    "The reasoning process and answer are enclosed within <think> </think> and <answer> </answer> tags, respectively, i.e., <think> reasoning process here </think> <answer> answer here </answer>. "
+    "User: You must put your answer inside <answer> </answer> tags, i.e., <answer> answer here </answer>. "
+    "{prompt}\n"
+    "Assistant: <think>"
+)
+
+def fetch_r1_response(llm, model_name, max_tokens, temp, messages):
+    prompt = R1_SYS_V2.format(prompt=messages[1]["content"])
+
+    response = llm.completions.create(
+        model=model_name,
+        prompt=prompt,
+        n=1,
+        temperature=temp,
+        max_tokens=max_tokens,
+        timeout=10000,
+    )
+    return response
+
+
 def perform_inference_and_check(handler: TaskHandler, temperature, max_tokens, result_file, llm, system_prompt, args):
     results = handler.load_existing_results(result_file)
     print(f"Loaded {len(results)} existing results.")
@@ -38,12 +61,12 @@ def perform_inference_and_check(handler: TaskHandler, temperature, max_tokens, r
     conversations = handler.make_conversations(remaining_data, system_prompt, args.model)
     repeated_conversations = []
     repeated_remaining_data = []
-    for conversation in conversations:
+    for problem, conversation in zip(remaining_data, conversations):
         for _ in range(args.n):
             repeated_conversations.append(conversation.copy())
-            repeated_remaining_data.append(remaining_data.copy())
+            repeated_remaining_data.append(problem.copy())
         
-    fetch_partial = partial(fetch_response_openai, llm, args.model, max_tokens, temperature)
+    fetch_partial = partial(fetch_r1_response, llm, args.model, max_tokens, temperature)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=16) as e:
         responses = list(e.map(fetch_partial, repeated_conversations))
@@ -54,7 +77,7 @@ def perform_inference_and_check(handler: TaskHandler, temperature, max_tokens, r
         future_to_task = {}
         token_usages = {}
         for idx, response in enumerate(responses):
-            response_str = response.choices[0].message.content.strip()
+            response_str = response.choices[0].text.strip()
             future_to_task[executor.submit(handler.update_results, repeated_remaining_data[idx], response_str, None)] = idx
             
             if idx not in token_usages:
