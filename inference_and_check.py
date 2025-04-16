@@ -173,10 +173,10 @@ def main():
     # create result dir if not exists
     if args.result_dir and not os.path.exists(args.result_dir):
         os.makedirs(args.result_dir)
-    result_file = os.path.join(args.result_dir, f"{MODEL_TO_NAME[args.model]}_{args.dataset}_{args.split}_{args.source}.json")
+    result_file = os.path.join(args.result_dir, f"{MODEL_TO_NAME.get(args.model, args.model)}_{args.dataset}_t{args.temperature}_n{args.n}.json")
 
     llm = OpenAI(base_url=args.base_url)
-    system_prompt = SYSTEM_PROMPT[args.model]
+    system_prompt = SYSTEM_PROMPT.get(args.model, "")
     perform_inference_and_check(handler, args.temperature, max_tokens, result_file, llm, system_prompt, args)
 
 if __name__ == "__main__":

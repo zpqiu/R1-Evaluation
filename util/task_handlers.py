@@ -102,7 +102,7 @@ class MathTaskHandler(TaskHandler):
 
 class MATH500TaskHandler(MathTaskHandler):
     def __init__(self):
-        self.dataset = "qq8933/MATH500"
+        self.dataset = "pe-nlp/MATH-500"
     
     @staticmethod
     def get_question_key():
@@ -119,11 +119,11 @@ class MATH500TaskHandler(MathTaskHandler):
 
 class AIMETaskHandler(MathTaskHandler):
     def __init__(self):
-        self.dataset = "AI-MO/aimo-validation-aime"
+        self.dataset = "HuggingFaceH4/aime_2024"
     
     @staticmethod
     def generate_prompt(prompt, model):
-        if MODEL_TO_NAME[model] == "Sky-T1-32B-Preview":
+        if MODEL_TO_NAME.get(model, "") == "Sky-T1-32B-Preview":
             return prompt + "\nReturn your final response within \\boxed{{}}"
         else:
             return "Return your final response within \\boxed{{}}. " + prompt
@@ -145,7 +145,7 @@ class AIMETaskHandler(MathTaskHandler):
     def load_and_filter_dataset(self, start, end, split="train", source=None, filter_difficulty=False, args=None):
         dataset = load_dataset(self.dataset)
         train_data = dataset[split].to_pandas()
-        filtered_data = train_data[train_data['url'].str.contains("2024", na=False)]
+        filtered_data = train_data
         return filtered_data.iloc[start:end] if end > 0 else filtered_data.iloc[start:]
     
 class GPQADiamondTaskHandler(TaskHandler):

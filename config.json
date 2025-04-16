@@ -1,0 +1,22 @@
+{
+  "datasets": {
+    "MATH500": {
+      "split": "test",
+      "n": 4,
+      "max_response_length": 12288
+    },
+    "AIME": {
+      "split": "train",
+      "n": 16,
+      "max_response_length": 24576
+    },
+    "GPQADiamond": {
+      "split": "train",
+      "n": 4,
+      "max_response_length": 12288
+    }
+  },
+  "base_url": "http://localhost:30000/v1",
+  "model": "model",
+  "temperature": 0.6
+}
