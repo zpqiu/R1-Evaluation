@@ -18,5 +18,6 @@
   },
   "base_url": "http://localhost:30000/v1",
   "model": "model",
-  "temperature": 0.6
+  "temperature": 0.6,
+  "prompt_file": "prompts/orz.txt"
 }

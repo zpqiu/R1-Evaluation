@@ -5,7 +5,6 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from tqdm import tqdm
 import numpy as np
 from util.task_handlers import *
-from util.model_utils import *
 from openai import OpenAI
 import concurrent.futures
 from functools import partial
@@ -29,17 +28,8 @@ def fetch_response_openai(llm, model_name, max_tokens, temp, messages):
     return response
 
 
-R1_SYS_V2 = (
-    "A conversation between User and Assistant. The User asks a question, and the Assistant solves it. "
-    "The Assistant first thinks about the reasoning process in the mind and then provides the User with the answer. "
-    "The reasoning process and answer are enclosed within <think> </think> and <answer> </answer> tags, respectively, i.e., <think> reasoning process here </think> <answer> answer here </answer>. "
-    "User: You must put your answer inside <answer> </answer> tags, i.e., <answer> answer here </answer>. "
-    "{prompt}\n"
-    "Assistant: <think>"
-)
-
-def fetch_r1_response(llm, model_name, max_tokens, temp, messages):
-    prompt = R1_SYS_V2.format(prompt=messages[1]["content"])
+def fetch_r1_response(llm, prompt_template, model_name, max_tokens, temp, messages):
+    prompt = prompt_template.format(messages[1]["content"])
 
     response = llm.completions.create(
         model=model_name,
@@ -66,7 +56,7 @@ def perform_inference_and_check(handler: TaskHandler, temperature, max_tokens, r
             repeated_conversations.append(conversation.copy())
             repeated_remaining_data.append(problem.copy())
         
-    fetch_partial = partial(fetch_r1_response, llm, args.model, max_tokens, temperature)
+    fetch_partial = partial(fetch_r1_response, llm, args.prompt, args.model, max_tokens, temperature)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=16) as e:
         responses = list(e.map(fetch_partial, repeated_conversations))
@@ -160,6 +150,7 @@ def main():
     parser.add_argument("--sample-method", type=str, default="random", choices=["random", "uniform_by_difficulty"], help="Method to sample problems.")
     parser.add_argument("--sample-size", type=int, default=100, help="Number of problems to sample.")
     parser.add_argument("--base-url", type=str, default="https://api.deepseek.com", help="Base URL for DeepSeek API.")
+    parser.add_argument("--prompt", type=str, default=None, help="Prompt for the model.")
     args = parser.parse_args()
     
     handler: TaskHandler = TASK_HANDLERS[args.dataset]()
@@ -173,11 +164,10 @@ def main():
     # create result dir if not exists
     if args.result_dir and not os.path.exists(args.result_dir):
         os.makedirs(args.result_dir)
-    result_file = os.path.join(args.result_dir, f"{MODEL_TO_NAME.get(args.model, args.model)}_{args.dataset}_t{args.temperature}_n{args.n}.json")
+    result_file = os.path.join(args.result_dir, f"{args.model}_{args.dataset}_t{args.temperature}_n{args.n}.json")
 
     llm = OpenAI(base_url=args.base_url)
-    system_prompt = SYSTEM_PROMPT.get(args.model, "")
-    perform_inference_and_check(handler, args.temperature, max_tokens, result_file, llm, system_prompt, args)
+    perform_inference_and_check(handler, args.temperature, max_tokens, result_file, llm, "", args)
 
 if __name__ == "__main__":
     main()

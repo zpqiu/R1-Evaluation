@@ -2,7 +2,7 @@ import os
 import argparse
 import subprocess
 import json
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -20,10 +20,23 @@ class Evaluator:
         self.config = self._load_config(config_path)
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.prompt = self._load_prompt_file(self.config["prompt_file"])
         
     def _load_config(self, config_path: str) -> Dict[str, Any]:
         with open(config_path, 'r') as f:
             return json.load(f)
+        
+    def _load_prompt_file(
+        prompt_file: Optional[os.PathLike],
+    ) -> Optional[str]:
+        """Load prompt from file if it exists, otherwise return as is."""
+        if prompt_file is None:
+            return None
+        if os.path.exists(prompt_file):
+            with open(prompt_file, "r", encoding="utf-8") as f:
+                return f.read()
+        else:
+            raise FileNotFoundError(f"Prompt file {prompt_file} not found")
 
     def _run_eval(self, dataset: str, params: Dict[str, Any], is_greedy: bool) -> float:
         script_path = "inference_and_check.py"
@@ -38,6 +51,7 @@ class Evaluator:
             "--n", "1" if is_greedy else str(params["n"]),
             "--result-dir", self.output_dir,
             "--sample-size", "-1",
+            "--prompt", self.prompt,
         ]
 
         print(f"Running eval for {dataset} ({'greedy' if is_greedy else 'sampling'})")
