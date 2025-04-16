@@ -13,7 +13,6 @@ from .taco.testing_util import run_test as taco_run_test
 from .math.testing_util import strip_answer_string, get_multiple_choice_answer, extract_answer, math_equal, mmlu_pro_extract_answer
 from .livecodebench.testing_util import unsafe_lcb_runTests, map_to_example, has_test_type, post_process_code, translate_private_test_cases
 from .common import TimeoutException, timeout
-from util.model_utils import *
 import pandas as pd
 
 def has_code(response):
@@ -123,10 +122,7 @@ class AIMETaskHandler(MathTaskHandler):
     
     @staticmethod
     def generate_prompt(prompt, model):
-        if MODEL_TO_NAME.get(model, "") == "Sky-T1-32B-Preview":
-            return prompt + "\nReturn your final response within \\boxed{{}}"
-        else:
-            return "Return your final response within \\boxed{{}}. " + prompt
+        return "Return your final response within \\boxed{{}}. " + prompt
     
     @staticmethod
     def get_question_key():
