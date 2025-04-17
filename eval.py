@@ -27,7 +27,7 @@ class Evaluator:
             return json.load(f)
         
     def _load_prompt_file(
-        prompt_file: Optional[os.PathLike],
+        self, prompt_file: Optional[os.PathLike],
     ) -> Optional[str]:
         """Load prompt from file if it exists, otherwise return as is."""
         if prompt_file is None:
