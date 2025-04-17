@@ -50,7 +50,6 @@ class Evaluator:
             "--temperature", "0" if is_greedy else str(self.config["temperature"]),
             "--n", "1" if is_greedy else str(params["n"]),
             "--result-dir", self.output_dir,
-            "--sample-size", "-1",
             "--prompt", self.prompt,
         ]
 
@@ -66,9 +65,21 @@ class Evaluator:
     def _extract_accuracy(self, output: str) -> float | None:
         for line in reversed(output.splitlines()):
             try:
-                data = json.loads(line.replace("'", '"'))
-                if "acc" in data:
-                    return data["acc"]
+                # 尝试直接解析 JSON
+                if line.startswith('{'):
+                    data = json.loads(line)
+                    if "acc" in data:
+                        return data["acc"]
+                # 尝试从日志中提取 JSON
+                elif "acc" in line:
+                    # 查找最后一个包含 "acc" 的 JSON 字符串
+                    start = line.rfind('{')
+                    end = line.rfind('}')
+                    if start != -1 and end != -1:
+                        json_str = line[start:end+1]
+                        data = json.loads(json_str)
+                        if "acc" in data:
+                            return data["acc"]
             except json.JSONDecodeError:
                 continue
         return None
@@ -76,17 +87,23 @@ class Evaluator:
     def run_all_evals(self) -> Dict[str, EvalResult]:
         results = {}
         for dataset, params in self.config["datasets"].items():
+            print(f"\n{'='*20} 开始评估数据集: {dataset} {'='*20}")
+            
             # 运行 greedy (pass@1)
             greedy_acc = self._run_eval(dataset, params, is_greedy=True)
+            print(f"Pass@1 (greedy): {greedy_acc:.2%}")
             
             # 运行 sampling (avg@n)
             avg_acc = self._run_eval(dataset, params, is_greedy=False)
+            print(f"Avg@{params['n']}: {avg_acc:.2%}")
             
             results[dataset] = EvalResult(
                 greedy_acc=greedy_acc,
                 avg_acc=avg_acc,
                 n_samples=params["n"]
             )
+            
+            print(f"{'='*20} 数据集 {dataset} 评估完成 {'='*20}\n")
             
         return results
 
