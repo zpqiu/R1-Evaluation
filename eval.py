@@ -63,25 +63,14 @@ class Evaluator:
             return 0.0
 
     def _extract_accuracy(self, output: str) -> float | None:
-        for line in reversed(output.splitlines()):
-            try:
-                # 尝试直接解析 JSON
-                if line.startswith('{'):
-                    data = json.loads(line)
+        for line in output.splitlines():
+            if line.startswith("EVAL_RESULT: "):
+                try:
+                    data = json.loads(line[12:])  # 去掉 "EVAL_RESULT: " 前缀
                     if "acc" in data:
                         return data["acc"]
-                # 尝试从日志中提取 JSON
-                elif "acc" in line:
-                    # 查找最后一个包含 "acc" 的 JSON 字符串
-                    start = line.rfind('{')
-                    end = line.rfind('}')
-                    if start != -1 and end != -1:
-                        json_str = line[start:end+1]
-                        data = json.loads(json_str)
-                        if "acc" in data:
-                            return data["acc"]
-            except json.JSONDecodeError:
-                continue
+                except json.JSONDecodeError:
+                    continue
         return None
 
     def run_all_evals(self) -> Dict[str, EvalResult]:

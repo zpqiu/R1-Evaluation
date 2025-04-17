@@ -138,7 +138,8 @@ def perform_inference_and_check(handler: TaskHandler, temperature, max_tokens, r
                     
             logger.info(f"Final accuracy: {total_correct}/{total_finish}")
             acc = round(total_correct / total_finish, 4) if total_finish > 0 else 0
-            logger.info(json.dumps({"acc": acc}))
+            # 使用特殊格式输出结果，便于 eval.py 解析
+            print(f"EVAL_RESULT: {json.dumps({'acc': acc})}")
 
         # 保存结果
         try:
