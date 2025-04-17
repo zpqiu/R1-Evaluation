@@ -45,8 +45,7 @@ def fetch_r1_response(llm, prompt_template, model_name, max_tokens, temp, messag
 def perform_inference_and_check(handler: TaskHandler, temperature, max_tokens, result_file, llm, system_prompt, args):
     results = handler.load_existing_results(result_file)
     print(f"Loaded {len(results)} existing results.")
-    train_data = handler.load_and_filter_dataset(args.start, args.end, split=args.split, source=args.source, \
-                                                 filter_difficulty=False, args=args)
+    train_data = handler.load_and_filter_dataset(split=args.split, args=args)
     remaining_data = handler.process_remaining_data(train_data, results)
     conversations = handler.make_conversations(remaining_data, system_prompt, args.model)
     repeated_conversations = []
@@ -86,8 +85,6 @@ def perform_inference_and_check(handler: TaskHandler, temperature, max_tokens, r
             problem_key = repeated_remaining_data[idx][handler.get_question_key()]
             if problem_key not in results:
                 results[problem_key] = repeated_remaining_data[idx]
-                if isinstance(handler, NUMINATaskHandler):
-                    results[problem_key]["messages"] = ""
                 results[problem_key]["responses"] = []
                 results[problem_key]["token_usages"] = []
                 # prompt = repeated_conversations[idx][1]["content"]
