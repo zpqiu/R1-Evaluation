@@ -52,7 +52,8 @@ class TaskHandler:
 class MathTaskHandler(TaskHandler):
     @staticmethod
     def generate_prompt(prompt):
-        return "Return your final response within \\boxed{{}}. " + prompt
+        return prompt
+        # return "Return your final response within \\boxed{{}}. " + prompt
     
     def check_correctness(self, problem, generation):
         answer = strip_answer_string(problem["answer"])
@@ -119,7 +120,8 @@ class AIMETaskHandler(MathTaskHandler):
     
     @staticmethod
     def generate_prompt(prompt, model):
-        return "Return your final response within \\boxed{{}}. " + prompt
+        return prompt
+        # return "Return your final response within \\boxed{{}}. " + prompt
     
     @staticmethod
     def get_question_key():

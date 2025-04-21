@@ -11,8 +11,7 @@ if os.environ.get("OPENAI_API_KEY") is None:
 
 @dataclass
 class EvalResult:
-    greedy_acc: float
-    avg_acc: float | None = None
+    temperature_results: Dict[float, float]
     n_samples: int | None = None
 
 class Evaluator:
@@ -38,7 +37,7 @@ class Evaluator:
         else:
             raise FileNotFoundError(f"Prompt file {prompt_file} not found")
 
-    def _run_eval(self, dataset: str, params: Dict[str, Any], is_greedy: bool) -> float:
+    def _run_eval(self, dataset: str, params: Dict[str, Any], temperature: float) -> float:
         script_path = "inference_and_check.py"
         command = [
             "python", script_path,
@@ -47,13 +46,13 @@ class Evaluator:
             "--split", params["split"],
             "--base-url", self.config["base_url"],
             "--max_tokens", str(params["max_response_length"]),
-            "--temperature", "0" if is_greedy else str(self.config["temperature"]),
-            "--n", "1" if is_greedy else str(params["n"]),
+            "--temperature", str(temperature),
+            "--n", "1" if temperature == 0.0 else str(params["n"]),
             "--result-dir", self.output_dir,
             "--prompt", self.prompt,
         ]
 
-        print(f"Running eval for {dataset} ({'greedy' if is_greedy else 'sampling'})")
+        print(f"Running eval for {dataset} (temperature={temperature})")
         try:
             output = subprocess.check_output(command, text=True)
             accuracy = self._extract_accuracy(output)
@@ -78,17 +77,15 @@ class Evaluator:
         for dataset, params in self.config["datasets"].items():
             print(f"\n{'='*20} 开始评估数据集: {dataset} {'='*20}")
             
-            # 运行 greedy (pass@1)
-            greedy_acc = self._run_eval(dataset, params, is_greedy=True)
-            print(f"Pass@1 (greedy): {greedy_acc:.2%}")
-            
-            # 运行 sampling (avg@n)
-            avg_acc = self._run_eval(dataset, params, is_greedy=False)
-            print(f"Avg@{params['n']}: {avg_acc:.2%}")
+            # 运行所有温度值的评估
+            temperature_results = {}
+            for temp in self.config["temperatures"]:
+                acc = self._run_eval(dataset, params, temperature=temp)
+                print(f"Temperature={temp}: {acc:.2%}")
+                temperature_results[temp] = acc
             
             results[dataset] = EvalResult(
-                greedy_acc=greedy_acc,
-                avg_acc=avg_acc,
+                temperature_results=temperature_results,
                 n_samples=params["n"]
             )
             
@@ -100,8 +97,7 @@ class Evaluator:
         # 保存详细结果到JSON
         detailed_results = {
             dataset: {
-                "pass@1": result.greedy_acc,
-                f"avg@{result.n_samples}": result.avg_acc,
+                "temperature_results": result.temperature_results,
                 "n_samples": result.n_samples
             } for dataset, result in results.items()
         }
@@ -113,13 +109,31 @@ class Evaluator:
         self._print_results_table(results)
 
     def _print_results_table(self, results: Dict[str, EvalResult]):
-        print("\n" + "="*60)
-        print(f"{'Dataset':<20} {'Pass@1':>10} {'Avg@N':>10} {'N':>5}")
-        print("-"*60)
+        # 获取所有温度值并排序
+        all_temps = sorted(set(temp for result in results.values() 
+                             for temp in result.temperature_results.keys()))
         
+        # 计算列宽
+        dataset_width = max(len(dataset) for dataset in results.keys()) + 2
+        temp_width = 10  # 每个温度列的宽度
+        
+        # 打印表头
+        header = f"{'Dataset':<{dataset_width}}"
+        for temp in all_temps:
+            header += f"| T={temp:<6}"
+        print("\n" + "=" * (dataset_width + len(all_temps) * (temp_width + 1)))
+        print(header)
+        print("-" * (dataset_width + len(all_temps) * (temp_width + 1)))
+        
+        # 打印每行数据
         for dataset, result in results.items():
-            print(f"{dataset:<20} {result.greedy_acc:>10.2%} {result.avg_acc:>10.2%} {result.n_samples:>5}")
-        print("="*60)
+            row = f"{dataset:<{dataset_width}}"
+            for temp in all_temps:
+                acc = result.temperature_results.get(temp, 0.0)
+                row += f"| {acc:>8.2%}"
+            print(row)
+        
+        print("=" * (dataset_width + len(all_temps) * (temp_width + 1)))
 
 def main():
     parser = argparse.ArgumentParser(description="Run evaluations based on config file")

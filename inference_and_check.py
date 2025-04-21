@@ -79,6 +79,18 @@ def perform_inference_and_check(handler: TaskHandler, temperature, max_tokens, r
         results = handler.load_existing_results(result_file)
         logger.info(f"Loaded {len(results)} existing results.")
         
+        # 首先计算已有结果的准确率
+        total_correct = 0
+        total_finish = 0
+        for problem_key, problem_data in results.items():
+            if "responses" in problem_data:
+                for response in problem_data["responses"]:
+                    if "correctness" in response:
+                        total_correct += response["correctness"]
+                        total_finish += 1
+        
+        logger.info(f"Existing results: {total_correct} correct out of {total_finish}")
+        
         train_data = handler.load_and_filter_dataset(split=args.split, args=args)
         remaining_data = handler.process_remaining_data(train_data, results)
         conversations = handler.make_conversations(remaining_data, system_prompt, args.model)
@@ -97,8 +109,6 @@ def perform_inference_and_check(handler: TaskHandler, temperature, max_tokens, r
         with concurrent.futures.ThreadPoolExecutor(max_workers=16) as e:
             responses = list(e.map(fetch_partial, repeated_conversations))
         
-        total_correct = 0 
-        total_finish = 0
         with ProcessPoolExecutor(max_workers=32) as executor:
             future_to_task = {}
             token_usages = {}
