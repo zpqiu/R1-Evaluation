@@ -5,6 +5,10 @@ import json
 from typing import Dict, Any, Optional
 from dataclasses import dataclass
 from pathlib import Path
+import wandb
+
+# 全局配置
+WANDB_PROJECT = "alex_rl_wandb"
 
 if os.environ.get("OPENAI_API_KEY") is None:
     os.environ["OPENAI_API_KEY"] = "sk-1234567890"
@@ -20,6 +24,14 @@ class Evaluator:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.prompt = self._load_prompt_file(self.config["prompt_file"])
+        
+        # 初始化wandb，使用output_dir作为run name
+        run_name = Path(output_dir).name
+        self.run = wandb.init(
+            project=WANDB_PROJECT,
+            name=run_name,
+            config=self.config
+        )
         
     def _load_config(self, config_path: str) -> Dict[str, Any]:
         with open(config_path, 'r') as f:
@@ -39,6 +51,9 @@ class Evaluator:
 
     def _run_eval(self, dataset: str, params: Dict[str, Any], temperature: float) -> float:
         script_path = "inference_and_check.py"
+        # 当temperature=0时，强制设置n=1
+        n_samples = 1 if temperature == 0.0 else params["n"]
+        
         command = [
             "python", script_path,
             "--model", self.config["model"],
@@ -47,12 +62,12 @@ class Evaluator:
             "--base-url", self.config["base_url"],
             "--max_tokens", str(params["max_response_length"]),
             "--temperature", str(temperature),
-            "--n", "1" if temperature == 0.0 else str(params["n"]),
+            "--n", str(n_samples),
             "--result-dir", self.output_dir,
             "--prompt", self.prompt,
         ]
 
-        print(f"Running eval for {dataset} (temperature={temperature})")
+        print(f"Running eval for {dataset} (temperature={temperature}, n={n_samples})")
         try:
             output = subprocess.check_output(command, text=True)
             accuracy = self._extract_accuracy(output)
@@ -102,11 +117,35 @@ class Evaluator:
             } for dataset, result in results.items()
         }
         
-        with open(self.output_dir / "detailed_results.json", 'w') as f:
+        results_file = self.output_dir / "detailed_results.json"
+        with open(results_file, 'w') as f:
             json.dump(detailed_results, f, indent=2)
 
         # 生成漂亮的结果表格
         self._print_results_table(results)
+
+        # 记录结果到wandb
+        for dataset, result in results.items():
+            for temp, acc in result.temperature_results.items():
+                n = result.n_samples if temp != 0.0 else 1
+                wandb.log({
+                    f"{dataset}/T={temp}/Avg@{n}": acc
+                })
+
+        # 上传相关文件到wandb
+        if self.config["prompt_file"]:
+            wandb.save(self.config["prompt_file"])
+        
+        # 上传模型生成的responses文件
+        for dataset in self.config["datasets"].keys():
+            for temp in self.config["temperatures"]:
+                n = self.config['datasets'][dataset]['n'] if temp != 0.0 else 1
+                response_file = self.output_dir / f"{dataset}_t{temp}_n{n}.json"
+                if response_file.exists():
+                    wandb.save(str(response_file))
+
+        # 完成wandb运行
+        self.run.finish()
 
     def _print_results_table(self, results: Dict[str, EvalResult]):
         # 获取所有温度值并排序

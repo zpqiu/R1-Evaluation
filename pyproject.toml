@@ -11,5 +11,6 @@ dependencies = [
     "pyext>=0.7",
     "regex>=2024.11.6",
     "scipy>=1.15.2",
+    "wandb>=0.19.9",
     "word2number>=1.1",
 ]
