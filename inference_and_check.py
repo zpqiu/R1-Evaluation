@@ -223,7 +223,7 @@ def main():
     # create result dir if not exists
     if args.result_dir and not os.path.exists(args.result_dir):
         os.makedirs(args.result_dir)
-    result_file = os.path.join(args.result_dir, f"{args.model}_{args.dataset}_t{args.temperature}_n{args.n}.json")
+    result_file = os.path.join(args.result_dir, f"{args.dataset}_t{args.temperature}_n{args.n}.json")
 
     llm = OpenAI(base_url=args.base_url)
     perform_inference_and_check(handler, args.temperature, max_tokens, result_file, llm, "", args)
